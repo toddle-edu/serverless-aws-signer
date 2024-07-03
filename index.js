@@ -66,6 +66,8 @@ class ServerlessPlugin {
       signingPolicy: { "type": "string" },
       description: {"type": "string"},
       retain: { "type": "boolean" },
+      isRegionDisabled: {"type": "boolean"},
+      isEnvDisabled: {"type": "boolean"},
     };
 
     const functionConfigSchemaProperties = {
@@ -273,11 +275,11 @@ class ServerlessPlugin {
     
     for (let lambda in signerProcesses) {
       var signItem = signerProcesses[lambda];
-      if (signItem.signerConfiguration.isRegionDisabled === "true"){
+      if (signItem.signerConfiguration.isRegionDisabled){
         return;
       }
       else {
-        if (signItem.signerConfiguration.isEnvDisabled === "true") return;
+        if (signItem.signerConfiguration.isEnvDisabled) return;
       }
       await this.verifyConfiguration(signItem);
       // Copy deployment artifact to S3
@@ -295,6 +297,8 @@ class ServerlessPlugin {
         delete signItem.signerConfiguration.signingPolicy;
         delete signItem.signerConfiguration.retain;
         delete signItem.signerConfiguration.description;
+        delete signItem.signerConfiguration.isRegionDisabled;
+        delete signItem.signerConfiguration.isEnvDisabled;
       }
 
       // Start signing job
@@ -329,11 +333,11 @@ class ServerlessPlugin {
     
     for (let layer in signerProcesses) {
       var signItem = signerProcesses[layer];
-      if (signItem.signerConfiguration.isRegionDisabled === "true"){
+      if (signItem.signerConfiguration.isRegionDisabled){
         return;
       }
       else {
-        if (signItem.signerConfiguration.isEnvDisabled === "true") return;
+        if (signItem.signerConfiguration.isEnvDisabled) return;
       }
       await this.verifyConfiguration(signItem);
       // Copy deployment artifact to S3
@@ -351,6 +355,8 @@ class ServerlessPlugin {
         delete signItem.signerConfiguration.signingPolicy;
         delete signItem.signerConfiguration.retain;
         delete signItem.signerConfiguration.description;
+        delete signItem.signerConfiguration.isRegionDisabled;
+        delete signItem.signerConfiguration.isEnvDisabled;
       }
 
       // Start signing job
