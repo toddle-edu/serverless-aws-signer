@@ -268,7 +268,7 @@ class ServerlessPlugin {
 
   }
 
-  async isSigningDisabled(signItem) {
+  isSigningDisabled(signItem) {
     if (signItem.signerConfiguration.isRegionEnabled && signItem.signerConfiguration.isEnvEnabled){
       return false;
     }
