@@ -66,8 +66,8 @@ class ServerlessPlugin {
       signingPolicy: { "type": "string" },
       description: {"type": "string"},
       retain: { "type": "boolean" },
-      isRegionDisabled: {"type": "boolean"},
-      isEnvDisabled: {"type": "boolean"},
+      isRegionEnabled: {"type": "boolean"},
+      isEnvEnabled: {"type": "boolean"},
     };
 
     const functionConfigSchemaProperties = {
@@ -96,7 +96,7 @@ class ServerlessPlugin {
     });
 
   }
-  
+
   generateSignerConfiguration() {
     var signerProcesses = {};
 
@@ -119,7 +119,7 @@ class ServerlessPlugin {
 
     const lambda_functions = this.serverless.service.functions;
 
-    if (this.serverless.service.package.individually === true) {  
+    if (this.serverless.service.package.individually === true) {
       for (let lambda_function in lambda_functions) {
         // Since merge mutates the first object in a set, we need to pass an empty object. Otherwise, it'll rewrite the default configuration
         // https://stackoverflow.com/questions/19965844/lodash-difference-between-extend-assign-and-merge#comment57512843_19966511
@@ -154,7 +154,7 @@ class ServerlessPlugin {
         signerConfiguration: _.merge(defaultConfig, this.serverless.service.custom.signer),
         packageArtifact: this.serverless.service.package.artifact
       }
-      
+
       try {
         // TODO: Remove this check with proper validation
         if (!signerProcesses[lambda_function].signerConfiguration.source.s3.bucketName) {
@@ -228,9 +228,9 @@ class ServerlessPlugin {
 
   async verifyConfiguration(configuration) {
 
-    // Check if signingProfile is in place    
+    // Check if signingProfile is in place
     const profileArn = await signersMethods.getProfileParamByName(configuration.signerConfiguration.profileName, 'profileVersionArn', this.serverless)
-    
+
     if (!profileArn) {
       if (this.isSigningDisabled(configuration)) return;
       await this.createSigningProfile(configuration.signerConfiguration.profileName);
@@ -269,17 +269,11 @@ class ServerlessPlugin {
   }
 
   async isSigningDisabled(signItem) {
-    if (signItem.signerConfiguration.isRegionDisabled){
-      this.serverless.cli.log('Function Signing on region is disabled');
-      return true;
+    if (signItem.signerConfiguration.isRegionEnabled && signItem.signerConfiguration.isEnvEnabled){
+      return false;
     }
-    else {
-      if (signItem.signerConfiguration.isEnvDisabled){
-        this.serverless.cli.log('Function Signing on stage is disabled');
-        return true;
-      }
-    }
-    return false
+    this.serverless.cli.log('Disabled signing...');
+    return true
   }
 
   async signLambdas() {
@@ -287,18 +281,18 @@ class ServerlessPlugin {
     this.serverless.cli.log('Signing functions...');
 
     const signerProcesses = this.generateSignerConfiguration();
-    
+
     for (let lambda in signerProcesses) {
       var signItem = signerProcesses[lambda];
 
       if (this.isSigningDisabled(signItem)) return;
-      
+
       await this.verifyConfiguration(signItem);
       // Copy deployment artifact to S3
       const fileContent = fs.readFileSync(signItem.packageArtifact);
 
       var S3Response = await this.serverless.providers.aws.request('S3', 'upload', {
-        Bucket: signItem.signerConfiguration.source.s3.bucketName, 
+        Bucket: signItem.signerConfiguration.source.s3.bucketName,
         Key:  signItem.signerConfiguration.source.s3.key,
         Body: fileContent
       })
@@ -309,8 +303,8 @@ class ServerlessPlugin {
         delete signItem.signerConfiguration.signingPolicy;
         delete signItem.signerConfiguration.retain;
         delete signItem.signerConfiguration.description;
-        delete signItem.signerConfiguration.isRegionDisabled;
-        delete signItem.signerConfiguration.isEnvDisabled;
+        delete signItem.signerConfiguration.isRegionEnabled;
+        delete signItem.signerConfiguration.isEnvEnabled;
       }
 
       // Start signing job
@@ -331,7 +325,7 @@ class ServerlessPlugin {
 
       // Replace current zip archive of deployment archive with the same payload but signed
         const { Body } = await this.serverless.providers.aws.request('S3', 'getObject', {
-          Bucket: signedCodeLocation.bucketName, 
+          Bucket: signedCodeLocation.bucketName,
           Key:  signedCodeLocation.key
         })
         await fs.writeFile(signItem.packageArtifact, Body)
@@ -342,18 +336,18 @@ class ServerlessPlugin {
     this.serverless.cli.log('Signing layers...');
 
     const signerProcesses = this.generateLayersConfiguration();
-    
+
     for (let layer in signerProcesses) {
       var signItem = signerProcesses[layer];
 
       if (this.isSigningDisabled(signItem)) return;
-      
+
       await this.verifyConfiguration(signItem);
       // Copy deployment artifact to S3
       const fileContent = fs.readFileSync(signItem.packageArtifact);
 
       var S3Response = await this.serverless.providers.aws.request('S3', 'upload', {
-        Bucket: signItem.signerConfiguration.source.s3.bucketName, 
+        Bucket: signItem.signerConfiguration.source.s3.bucketName,
         Key:  signItem.signerConfiguration.source.s3.key,
         Body: fileContent
       })
@@ -364,8 +358,8 @@ class ServerlessPlugin {
         delete signItem.signerConfiguration.signingPolicy;
         delete signItem.signerConfiguration.retain;
         delete signItem.signerConfiguration.description;
-        delete signItem.signerConfiguration.isRegionDisabled;
-        delete signItem.signerConfiguration.isEnvDisabled;
+        delete signItem.signerConfiguration.isRegionEnabled;
+        delete signItem.signerConfiguration.isEnvEnabled;
       }
 
       // Start signing job
@@ -386,7 +380,7 @@ class ServerlessPlugin {
 
       // Replace current zip archive of deployment archive with the same payload but signed
         const { Body } = await this.serverless.providers.aws.request('S3', 'getObject', {
-          Bucket: signedCodeLocation.bucketName, 
+          Bucket: signedCodeLocation.bucketName,
           Key:  signedCodeLocation.key
         })
         await fs.writeFile(signItem.packageArtifact, Body)
@@ -417,7 +411,7 @@ class ServerlessPlugin {
     await this.serverless.providers.aws.request('S3', 'putBucketVersioning', {
       Bucket: bucketName,
       VersioningConfiguration: {
-        MFADelete: "Disabled", 
+        MFADelete: "Disabled",
         Status: "Enabled"
        }
     })
@@ -439,7 +433,7 @@ class ServerlessPlugin {
     }
 
     await this.serverless.providers.aws.request('Signer', 'putSigningProfile', params)
-    
+
     return
   }
 
@@ -456,7 +450,7 @@ class ServerlessPlugin {
       // Copy deployment artifact to S3
 
       var profileArn = await signersMethods.getProfileParamByName(profileName, 'profileVersionArn', this.serverless);
-      
+
       // TODO: Remove this check with proper validation
       if (!profileArn) {
         throw new Error("Signing profile not found")
@@ -475,7 +469,7 @@ class ServerlessPlugin {
   }
 
   async removeResources() {
-    
+
     const signerProcesses = this.generateSignerConfiguration();
 
     for (let lambda in signerProcesses) {
@@ -493,7 +487,7 @@ class ServerlessPlugin {
       }
     }
   }
-  
+
   async removeSigningProfile(profileName) {
     return;
     // Make sure signing profile exists and hasn't been revoked yet
@@ -540,7 +534,7 @@ class ServerlessPlugin {
 
         s3Objects.Versions.forEach(item => {s3ObjectsList.push({"Key": item.Key, VersionId: item.VersionId})})
         s3Objects.DeleteMarkers.forEach(item => {s3ObjectsList.push({"Key": item.Key, VersionId: item.VersionId})})
-        
+
         if (s3ObjectsList.length > 0) {
           var response = await this.serverless.providers.aws.request('S3', 'deleteObjects', {
             Bucket: bucketName,
@@ -570,7 +564,7 @@ class ServerlessPlugin {
     // await this.serverless.providers.aws.request('S3', 'putBucketVersioning', {
     //   Bucket: bucketName,
     //   VersioningConfiguration: {
-    //     MFADelete: "Disabled", 
+    //     MFADelete: "Disabled",
     //     Status: "Enabled"
     //    }
     // })
