@@ -273,6 +273,12 @@ class ServerlessPlugin {
     
     for (let lambda in signerProcesses) {
       var signItem = signerProcesses[lambda];
+      if (signItem.signerConfiguration.isRegionDisabled === "true"){
+        return;
+      }
+      else {
+        if (signItem.signerConfiguration.isEnvDisabled === "true") return;
+      }
       await this.verifyConfiguration(signItem);
       // Copy deployment artifact to S3
       const fileContent = fs.readFileSync(signItem.packageArtifact);
@@ -323,6 +329,12 @@ class ServerlessPlugin {
     
     for (let layer in signerProcesses) {
       var signItem = signerProcesses[layer];
+      if (signItem.signerConfiguration.isRegionDisabled === "true"){
+        return;
+      }
+      else {
+        if (signItem.signerConfiguration.isEnvDisabled === "true") return;
+      }
       await this.verifyConfiguration(signItem);
       // Copy deployment artifact to S3
       const fileContent = fs.readFileSync(signItem.packageArtifact);
