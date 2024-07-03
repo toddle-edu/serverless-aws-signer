@@ -232,6 +232,7 @@ class ServerlessPlugin {
     const profileArn = await signersMethods.getProfileParamByName(configuration.signerConfiguration.profileName, 'profileVersionArn', this.serverless)
     
     if (!profileArn) {
+      if (this.isSigningDisabled(configuration)) return;
       await this.createSigningProfile(configuration.signerConfiguration.profileName);
     }
 
@@ -494,7 +495,7 @@ class ServerlessPlugin {
   }
   
   async removeSigningProfile(profileName) {
-
+    return;
     // Make sure signing profile exists and hasn't been revoked yet
     try {
 
@@ -520,6 +521,7 @@ class ServerlessPlugin {
   }
 
   async removeS3Bucket(bucketName) {
+    return;
 
     // Make sure bucket exists
     try {
@@ -553,9 +555,9 @@ class ServerlessPlugin {
       }
 
       // Delete S3 bucket
-      await this.serverless.providers.aws.request('S3', 'deleteBucket', {
-        Bucket: bucketName
-      })
+      // await this.serverless.providers.aws.request('S3', 'deleteBucket', {
+      //   Bucket: bucketName
+      // })
 
     }
     catch (e) {
