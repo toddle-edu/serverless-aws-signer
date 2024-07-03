@@ -267,6 +267,20 @@ class ServerlessPlugin {
 
   }
 
+  async isSigningDisabled(signItem) {
+    if (signItem.signerConfiguration.isRegionDisabled){
+      this.serverless.cli.log('Function Signing on region is disabled');
+      return true;
+    }
+    else {
+      if (signItem.signerConfiguration.isEnvDisabled){
+        this.serverless.cli.log('Function Signing on stage is disabled');
+        return true;
+      }
+    }
+    return false
+  }
+
   async signLambdas() {
 
     this.serverless.cli.log('Signing functions...');
@@ -275,12 +289,9 @@ class ServerlessPlugin {
     
     for (let lambda in signerProcesses) {
       var signItem = signerProcesses[lambda];
-      if (signItem.signerConfiguration.isRegionDisabled){
-        return;
-      }
-      else {
-        if (signItem.signerConfiguration.isEnvDisabled) return;
-      }
+
+      if (this.isSigningDisabled(signItem)) return;
+      
       await this.verifyConfiguration(signItem);
       // Copy deployment artifact to S3
       const fileContent = fs.readFileSync(signItem.packageArtifact);
@@ -333,12 +344,9 @@ class ServerlessPlugin {
     
     for (let layer in signerProcesses) {
       var signItem = signerProcesses[layer];
-      if (signItem.signerConfiguration.isRegionDisabled){
-        return;
-      }
-      else {
-        if (signItem.signerConfiguration.isEnvDisabled) return;
-      }
+
+      if (this.isSigningDisabled(signItem)) return;
+      
       await this.verifyConfiguration(signItem);
       // Copy deployment artifact to S3
       const fileContent = fs.readFileSync(signItem.packageArtifact);
@@ -439,6 +447,7 @@ class ServerlessPlugin {
     var cloudFormationResources = this.serverless.service.provider.compiledCloudFormationTemplate.Resources;
     const signerProcesses = this.generateSignerConfiguration();
     for (let lambda in signerProcesses) {
+      if (this.isSigningDisabled(signerProcesses[lambda])) return;
       const profileName = signerProcesses[lambda].signerConfiguration.profileName;
       const signingPolicy = signerProcesses[lambda].signerConfiguration.signingPolicy;
       const description = signerProcesses[lambda].signerConfiguration.description;
